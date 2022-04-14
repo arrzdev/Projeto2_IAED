@@ -201,12 +201,6 @@ void handle_add_list_fligth_command(database *db){
 			printf(INVALID_DURATION);
 			return;
 		}
-
-		/* invalid capacity */
-		if (!is_valid_capacity(new_flight.capacity)){
-			printf(INVALID_CAPACITY);
-			return;
-		}
 	
 		insert_flight(db, &new_flight, origin_airport_index);
 	}
@@ -504,12 +498,6 @@ int is_valid_duration(time *duration){
  * \param capacity capacity to be checked
  * \return 1 if capacity is valid, 0 otherwise
  */
-int is_valid_capacity(int capacity){
-	if (capacity < 10 || capacity > 100)
-		return 0;
-		
-	return 1;
-}
 
 /**
  * \brief Function to insert a flight in the system database 
