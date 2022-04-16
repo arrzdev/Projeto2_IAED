@@ -28,7 +28,7 @@ import subprocess
 import os
 from pathlib import Path
 
-project_name = 'proj1'
+project_name = 'proj2'
 
 project_path = Path(__file__).absolute().parent
 public_tests_folder = str(project_path) + '/proj2-public-tests/'
