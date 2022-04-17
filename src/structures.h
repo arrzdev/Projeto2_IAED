@@ -69,7 +69,7 @@ typedef struct{
   airport airports[MAX_AIRPORTS];
   flight flights[MAX_FLIGHTS];
   date date;
-  hashtable *hashtable;
+  hashtable *reservations_hashtable;
 } database;
 
 #endif

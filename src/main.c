@@ -24,7 +24,7 @@ int main(){
 	db.n_flights = 0;
 	
 	/* init hashtable */
-	db.hashtable = init_hashtable(101);
+	db.reservations_hashtable = init_hashtable(&db, 20011);
 
 	/* execute till 'q' command is inserted */  
 	while (handle_command(&db)){
@@ -221,7 +221,7 @@ void handle_add_list_fligth_command(database *db){
 		new_flight.left_capacity = new_flight.capacity;
 		
 		/* init linked list */
-		new_flight.reservations = init_list();
+		new_flight.reservations = init_list(db);
 	
 		insert_flight(db, &new_flight, origin_airport_index);
 	}
@@ -316,7 +316,7 @@ void handle_add_list_reservation_command(database *db){
 		reservation_flight = &db->flights[flight_index];
 		
 		/* flight reservation already used */
-		if (search_hashtable(db->hashtable, reservation_buffer)){
+		if (search_hashtable(db->reservations_hashtable, reservation_buffer)){
 			printf(FLIGHT_RESERVATION_ALREADY_IN_USE, reservation_buffer);
 			return;
 		}
@@ -342,11 +342,11 @@ void handle_add_list_reservation_command(database *db){
 		reservation_flight->left_capacity -= n_passengers;
 		
 		/* allocate reservation_id */
-		reservation_id = (char *) controlled_malloc(strlen(reservation_buffer) + 1);
+		reservation_id = (char *) controlled_malloc(db, strlen(reservation_buffer) + 1);
 		strcpy(reservation_id, reservation_buffer);
 		
 		/* allocate reservation structure */
-		new_reservation = (reservation *) controlled_malloc(sizeof(reservation));
+		new_reservation = (reservation *) controlled_malloc(db, sizeof(reservation));
 		
 		/* insert the data into the reservation structure */
 		new_reservation->date = date;
@@ -355,7 +355,7 @@ void handle_add_list_reservation_command(database *db){
 		new_reservation->reservation_id = reservation_id;
 		
 		/* create new node */
-		new_node = (node *) controlled_malloc(sizeof(node));
+		new_node = (node *) controlled_malloc(db, sizeof(node));
 		
 		/* insert data into node */
 		new_node->reservation = new_reservation;
@@ -365,7 +365,7 @@ void handle_add_list_reservation_command(database *db){
 		insert_node(reservation_flight->reservations, new_node);
 		
 		/* insert in hashtable */
-		insert_hashtable(db->hashtable, new_node);
+		insert_hashtable(db->reservations_hashtable, new_node);
 	}
 	/* print */
 	else{
@@ -429,8 +429,8 @@ void handle_delete_flights_reservations_command(database *db){
 					next_node = current_node->next;
 					
 					delete_node(iteration_flight->reservations, current_node);
-					delete_from_hashtable(db->hashtable, current_node);
-					free(current_node);
+					delete_from_hashtable(db->reservations_hashtable, current_node);
+					free_node(current_node);
 					
 					current_node = next_node;
 				}
@@ -462,7 +462,7 @@ void handle_delete_flights_reservations_command(database *db){
 		node* reservation_node;
 		
 		/* reservation code */
-		reservation_node = search_hashtable(db->hashtable, code);
+		reservation_node = search_hashtable(db->reservations_hashtable, code);
 		
 		if (!reservation_node){
 			printf(NOT_FOUND);
@@ -474,8 +474,8 @@ void handle_delete_flights_reservations_command(database *db){
 		reservation_node->reservation->n_passengers;
 		
 		delete_node(reservation_node->reservation->reservation_flight->reservations, reservation_node);
-		delete_from_hashtable(db->hashtable, reservation_node);
-		free(reservation_node);
+		delete_from_hashtable(db->reservations_hashtable, reservation_node);
+		free_node(reservation_node);
 		
 	}
 }
@@ -849,7 +849,7 @@ void print_sorted_flights(flight sorted_flights[], int n_print_flights, int type
 /*                2 PROJETO                  */
 /* ========================================= */
 
-void* controlled_malloc(unsigned int size){
+void* controlled_malloc(database *db, unsigned int size){
 	void* p = malloc(size);
 	
 	/* if we had memory */
@@ -857,7 +857,7 @@ void* controlled_malloc(unsigned int size){
 		return p;
 
 	/* I need to free everything */ 
-
+	free_all(db);
 	printf(NO_MEMORY);
 	exit(NO_MEMORY_EXIT_CODE);
 	return NULL;
@@ -911,8 +911,8 @@ int found_flight_id(database *db, char id[MAX_FLIGHT_ID_SIZE+1], date flight_dat
 
 /* LINKED LISTS */
 
-list* init_list(){
-	list* new_list = (list*)  controlled_malloc(sizeof(list));
+list* init_list(database *db){
+	list* new_list = (list*)  controlled_malloc(db, sizeof(list));
 	new_list->head = NULL;
 	
 	return new_list;
@@ -924,28 +924,28 @@ list* init_list(){
  * @param reservations 
  * @param new_node 
  */
-void insert_node(list *reservations, node *new_node){	
+void insert_node(list *linked_list, node *new_node){	
 	new_node->next = NULL;
 	new_node->previous = NULL;
 
 	/* if our list is empty we just insert it*/	
-	if (!reservations->head){
-		reservations->head = new_node;
+	if (!linked_list->head){
+		linked_list->head = new_node;
 		return;
 	}
 	
 	/* let's find the sweet spot */
 	
 	/* check if it is the first elemet */
-	if (strcmp(reservations->head->reservation->reservation_id, new_node->reservation->reservation_id) > 0){
+	if (strcmp(linked_list->head->reservation->reservation_id, new_node->reservation->reservation_id) > 0){
 		/* insert in the first position */
-		new_node->next = reservations->head;
-		reservations->head = new_node;
+		new_node->next = linked_list->head;
+		linked_list->head = new_node;
 	}
 	else{
 		node* current_node;
 		
-		for(current_node = reservations->head; current_node->next; current_node = current_node->next){
+		for(current_node = linked_list->head; current_node->next; current_node = current_node->next){
 			if (strcmp(current_node->next->reservation->reservation_id, new_node->reservation->reservation_id) > 0){
 				break;
 			}
@@ -971,8 +971,8 @@ void delete_node(list *linked_list, node *current_node){
 	}
 }
 
-void delete_list(list *list_to_delete){
-	node* current_node = list_to_delete->head;
+void delete_list(list *linked_list){
+	node* current_node = linked_list->head;
 	node* next_node;
 	
 	while (current_node){
@@ -984,7 +984,7 @@ void delete_list(list *list_to_delete){
 	}
 	
 	/* free reservations structure */
-	free(list_to_delete);
+	free(linked_list);
 }
 
 void free_node(node* node_to_free){
@@ -994,11 +994,11 @@ void free_node(node* node_to_free){
 }
 
 /* HASH TABLE */
-hashtable* init_hashtable(int size){
+hashtable* init_hashtable(database *db, int size){
 	int i;
-	hashtable* new_hashtable = (hashtable*) controlled_malloc(sizeof(hashtable));
+	hashtable* new_hashtable = (hashtable*) controlled_malloc(db, sizeof(hashtable));
 	
-	node** table = (node**) controlled_malloc(sizeof(node*) * size);
+	node** table = (node**) controlled_malloc(db, sizeof(node*) * size);
 	
 	new_hashtable->table = table;
 	new_hashtable->count = 0;
@@ -1023,72 +1023,51 @@ int hash_string(char* v, int size){
 	return hash;
 }
 
-hashtable* insert_hashtable(hashtable* reservations_hashtable, node* node_to_insert){
-	int i = hash_string(node_to_insert->reservation->reservation_id, reservations_hashtable->size);
+hashtable* insert_hashtable(hashtable* _hashtable, node* node_to_insert){
+	int i = hash_string(node_to_insert->reservation->reservation_id, _hashtable->size);
 	
-	while (reservations_hashtable->table[i] != NULL) 
-		i = (i + 1) % reservations_hashtable->size; 
+	while (_hashtable->table[i] != NULL) 
+		i = (i + 1) % _hashtable->size; 
 		
-	reservations_hashtable->table[i] = node_to_insert;
+	_hashtable->table[i] = node_to_insert;
 	
-	/* expand hash table */
-	if ((reservations_hashtable->count + 1) > (reservations_hashtable->size / 2))
-		reservations_hashtable = expand_hashtable(reservations_hashtable);
-		
-	return reservations_hashtable;
+	return _hashtable;
 }
 
-void delete_from_hashtable(hashtable* reservations_hashtable, node* node_to_delete){
-	int j, i = hash_string(node_to_delete->reservation->reservation_id, reservations_hashtable->size);
+void delete_from_hashtable(hashtable* _hashtable, node* node_to_delete){
+	int j, i = hash_string(node_to_delete->reservation->reservation_id, _hashtable->size);
 	node* tmp_node;
-	while (reservations_hashtable->table[i] != NULL) {
-		if (reservations_hashtable->table[i] == node_to_delete)
+	while (_hashtable->table[i] != NULL) {
+		if (_hashtable->table[i] == node_to_delete)
 			break; /* compare by pointers */
 		else
-			i = (i + 1) % reservations_hashtable->size;
+			i = (i + 1) % _hashtable->size;
 	}
-	if (reservations_hashtable->table[i] == NULL) return;
-	reservations_hashtable->table[i] = NULL;
-	reservations_hashtable->count--;
+	if (_hashtable->table[i] == NULL) return;
+	_hashtable->table[i] = NULL;
+	_hashtable->count--;
 
-	for (j = (i + 1) % reservations_hashtable->size; reservations_hashtable->table[j] != NULL; 
-	j = (j + 1) % reservations_hashtable->size) {
+	for (j = (i + 1) % _hashtable->size; _hashtable->table[j] != NULL; 
+	j = (j + 1) % _hashtable->size) {
 	
-		tmp_node = reservations_hashtable->table[j];
-		reservations_hashtable->table[j] = NULL;
+		tmp_node = _hashtable->table[j];
+		_hashtable->table[j] = NULL;
 		
-		reservations_hashtable->count--;
-		insert_hashtable(reservations_hashtable, tmp_node);
+		_hashtable->count--;
+		insert_hashtable(_hashtable, tmp_node);
 	}
 }
 
-hashtable* expand_hashtable(hashtable* old_hashtable){
-	int i;
+void* search_hashtable(hashtable* _hashtable, char reservation_id[]){
+	int i = hash_string(reservation_id, _hashtable->size);
 	
-	/* create a new placeholder hashtable with the double of the size */
-	hashtable* new_hashtable = init_hashtable(old_hashtable->size * 2);
+	while (_hashtable->table[i] != NULL){
 
-	for (i = 0; i < old_hashtable->size; i++) {
-		if (old_hashtable->table[i] != NULL)
-			insert_hashtable(new_hashtable, old_hashtable->table[i]);
-	}
-	
-	/* delete old hashtable */
-	delete_hashtable(old_hashtable);
-
-	return new_hashtable;
-}
-
-void* search_hashtable(hashtable* reservations_hashtable, char reservation_id[]){
-	int i = hash_string(reservation_id, reservations_hashtable->size);
-	
-	while (reservations_hashtable->table[i] != NULL){
-
-		if (!strcmp(reservations_hashtable->table[i]->reservation->reservation_id, reservation_id)){
-			return reservations_hashtable->table[i];
+		if (!strcmp(_hashtable->table[i]->reservation->reservation_id, reservation_id)){
+			return _hashtable->table[i];
 		}
 		else{
-			i = (i + 1) % reservations_hashtable->size;
+			i = (i + 1) % _hashtable->size;
 		}
 	}
 	
@@ -1107,7 +1086,7 @@ void free_all(database *db){
 	flight *iteration_flight;
 	
 	/* free hashtable */
-	delete_hashtable(db->hashtable);
+	delete_hashtable(db->reservations_hashtable);
 	
 	/* free linked lists of flights */
 	for (i=0; i<db->n_flights; i++){
