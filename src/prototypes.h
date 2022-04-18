@@ -63,11 +63,15 @@ void delete_node(list *linked_list, node *current_node);
 
 /* HASH TABLES */
 hashtable* init_hashtable(database *db, int size);
+
 int hash_string(char* v, int size);
-hashtable* insert_table(hashtable* reservations_hashtable, node* node_to_insert);
-void delete_hashtable(hashtable* hashtable_to_delete);
-void* search_table(hashtable* reservations_hashtable, char reservation_id[]);
-void delete_table(hashtable* reservations_hashtable, node* node_to_delete);
+
+hashtable* insert_in_table(hashtable* table, node* new_node);
+
+void remove_from_table(hashtable* table, node* node_to_remove);
+
+void delete_table(hashtable* table);
+void* search_table(hashtable* table, char* id);
 
 void free_all(database *db);
 

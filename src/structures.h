@@ -39,6 +39,7 @@ typedef struct Node{
 
 typedef struct{
   node *head;
+  node *tail;
 } list;
 
 typedef struct Flight{
@@ -56,7 +57,6 @@ typedef struct Flight{
 /* hash table */
 typedef struct {
   node **table;
-  int count;
   int size;
 } hashtable;
 
