@@ -3,8 +3,6 @@
 
 #include "constants.h"
 
-
-
 /* structures */
 typedef struct{
   int day;
@@ -34,6 +32,8 @@ typedef struct {
 typedef struct Node{
   struct Node *next;
   struct Node *previous;
+  struct Node *next_hash;
+  struct Node *previous_hash;
   reservation *reservation;
 } node;
 
@@ -52,6 +52,7 @@ typedef struct Flight{
   int capacity;
   int left_capacity;
   list *reservations;
+  int n_reservations;
 } flight;
 
 /* hash table */
@@ -70,6 +71,7 @@ typedef struct{
   flight flights[MAX_FLIGHTS];
   date date;
   hashtable *reservations_hashtable;
+  hashtable *flights_hashtable;
 } database;
 
 #endif

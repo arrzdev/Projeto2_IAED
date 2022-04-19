@@ -32,7 +32,7 @@
 
 #define INVALID_RESERVATION_CODE "invalid reservation code\n"
 #define FLIGHT_DOESNT_EXIST "%s: flight does not exist\n"
-#define PRINT_RESERVATIONS "%s %d\n"
+#define PRINT_RESERVATION "%s %d\n"
 #define FLIGHT_RESERVATION_ALREADY_IN_USE "%s: flight reservation already used\n"
 #define TOO_MANY_RESERVATIONS "too many reservations\n"
 #define INVALID_PASSENGER_NUMBER "invalid passenger number\n"

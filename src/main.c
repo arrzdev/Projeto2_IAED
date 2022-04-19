@@ -231,6 +231,7 @@ void handle_add_list_fligth_command(database *db){
 		
 		/* init linked list */
 		new_flight.reservations = init_list(db);
+		new_flight.n_reservations = 0;
 	
 		insert_flight(db, &new_flight, origin_airport_index);
 	}
@@ -283,10 +284,7 @@ void handle_date_forward(database *db){
 	printf(PRINT_DATE, NewDate.day, NewDate.month, NewDate.year);
 }
 
-/**
- * @brief 
- * 
- */
+
 void handle_add_list_reservation_command(database *db){
 	/* create new reservation */
 	char flight_id[MAX_FLIGHT_ID_SIZE+1];
@@ -368,6 +366,8 @@ void handle_add_list_reservation_command(database *db){
 		new_node->reservation = new_reservation;
 		new_node->next = NULL;
 		new_node->previous = NULL;
+		new_node->next_hash = NULL;
+		new_node->previous_hash = NULL;
 		
 		insert_node(reservation_flight->reservations, new_node);
 		
@@ -376,12 +376,14 @@ void handle_add_list_reservation_command(database *db){
 		
 		/* reserve passengers */
 		reservation_flight->left_capacity -= n_passengers;
+		reservation_flight->n_reservations++;
 	}
 	/* print */
 	else{
 		node* current_node;
-		int flight_index;
-		
+		int flight_index, i, j;
+		node** sorted_flights;
+
 		/* flight exists */
 		flight_index = found_flight_id(db, flight_id, date);
 		if (flight_index == -1){
@@ -398,12 +400,35 @@ void handle_add_list_reservation_command(database *db){
 		/* get the flight_index of the correct day */
 		reservation_flight = &db->flights[flight_index];
 
-		/* print them */
-		for (current_node = reservation_flight->reservations->head; current_node;
-		current_node = current_node->next){
-			printf(PRINT_RESERVATIONS, current_node->reservation->reservation_id, 
-			current_node->reservation->n_passengers);
+		/* sort */
+		sorted_flights = (node**) controlled_malloc(db, sizeof(node) * reservation_flight->n_reservations);
+
+		/* copy data */
+		i = 0;
+		for (current_node = reservation_flight->reservations->head; current_node; current_node = current_node->next){
+			sorted_flights[i] = current_node;
+			i++;
 		}
+
+		/* bubble sort sorted_flights */
+		for (i = 0; i < reservation_flight->n_reservations; i++){
+			for (j = 0; j < reservation_flight->n_reservations - i - 1; j++){
+				if (strcmp(sorted_flights[j]->reservation->reservation_id, sorted_flights[j+1]->reservation->reservation_id) > 0){
+					node* temp = sorted_flights[j];
+					sorted_flights[j] = sorted_flights[j+1];
+					sorted_flights[j+1] = temp;
+				}
+			}		
+		}
+
+
+		/* print */
+		for (i=0; i<reservation_flight->n_reservations; i++){
+			printf(PRINT_RESERVATION, sorted_flights[i]->reservation->reservation_id, 
+			sorted_flights[i]->reservation->n_passengers);
+		}
+
+		free(sorted_flights);
 	}
 }
 
@@ -421,7 +446,7 @@ void handle_delete_flights_reservations_command(database *db){
 	
 		node* next_node;
 		flight* iteration_flight;
-		int i, j, found=0;
+		int i, deleted_n_flights=0;
 		
 		/* iterate trought the flights*/
 		for (i=0; i<db->n_flights; i++){
@@ -429,7 +454,7 @@ void handle_delete_flights_reservations_command(database *db){
 			iteration_flight = &db->flights[i];
 		
 			if (!strcmp(iteration_flight->id, code)){
-				found = 1;
+				deleted_n_flights++;
 			
 				/* we need to delete every reservation linked to this flight*/
 				current_node = iteration_flight->reservations->head;
@@ -446,21 +471,15 @@ void handle_delete_flights_reservations_command(database *db){
 		
 				/* free the memory allocated for the flight linked list */
 				free(iteration_flight->reservations);
-		
-				/* now we need to delete the flight */
-				for (j=i; j<db->n_flights; j++){
-					/* shift elements to the left*/
-					db->flights[j] = db->flights[j+1];
-				}
-				
-				db->n_flights--;
-				
-				/* since we shifted the list to the left we need to check index i again */
-				i--;
+			}
+			else {
+				db->flights[i-deleted_n_flights] = db->flights[i];
 			}
 		}
+
+		db->n_flights -= deleted_n_flights;
 		
-		if (!found){
+		if (!deleted_n_flights){
 			printf(NOT_FOUND);
 			return;
 		}
@@ -481,10 +500,12 @@ void handle_delete_flights_reservations_command(database *db){
 		/* increment flight capacity left */
 		reservation_node->reservation->reservation_flight->left_capacity += 
 		reservation_node->reservation->n_passengers;
+
+		/* decrement n_reservations */
+		reservation_node->reservation->reservation_flight->n_reservations--;
 		
 		remove_from_table(db->reservations_hashtable, reservation_node);
 		delete_node(reservation_node->reservation->reservation_flight->reservations, reservation_node);
-
 	}
 }
 
@@ -925,33 +946,14 @@ list* init_list(database *db){
 }
 
 
-void insert_node(list *linked_list, node *new_node){	
+void insert_node(list *linked_list, node *new_node){
 	if (!linked_list->head){
 		linked_list->head = new_node;
-		linked_list->tail = new_node;
-	}
-	else if (strcmp(new_node->reservation->reservation_id, linked_list->head->reservation->reservation_id) < 0){
-		new_node->next = linked_list->head;
-		linked_list->head->previous = new_node;
-		linked_list->head = new_node;
-	}
-	else if(strcmp(new_node->reservation->reservation_id, linked_list->tail->reservation->reservation_id) > 0){
-		new_node->previous = linked_list->tail;
-		linked_list->tail->next = new_node;
-		linked_list->tail = new_node;
 	}
 	else{
-		node *iteration_node = linked_list->head;
-		
-		while (iteration_node->next && 
-		strcmp(new_node->reservation->reservation_id, iteration_node->next->reservation->reservation_id) > 0){
-			iteration_node = iteration_node->next;
-		}
-		
-		new_node->next = iteration_node->next;
-		new_node->previous = iteration_node;
-		iteration_node->next->previous = new_node;
-		iteration_node->next = new_node;
+		 new_node->next = linked_list->head;
+		 linked_list->head->previous = new_node;
+		 linked_list->head = new_node;
 	}
 }
 
@@ -1023,50 +1025,40 @@ int hash_string(char* v, int size){
 hashtable* insert_in_table(hashtable* _hashtable, node* node_to_insert){
 	int i = hash_string(node_to_insert->reservation->reservation_id, _hashtable->size);
 	
-	while (_hashtable->table[i] != NULL) 
-		i = (i + 1) % _hashtable->size; 
-		
-	_hashtable->table[i] = node_to_insert;
+	if (!_hashtable->table[i]){
+		_hashtable->table[i] = node_to_insert;
+	}
+	else{
+		node_to_insert->next_hash = _hashtable->table[i];
+		_hashtable->table[i]->previous_hash = node_to_insert;
+		_hashtable->table[i] = node_to_insert;
+	}
 	
 	return _hashtable;
 }
 
 void remove_from_table(hashtable* _hashtable, node* node_to_delete){
-	int j, i = hash_string(node_to_delete->reservation->reservation_id, _hashtable->size);
-	node* tmp_node;
-	while (_hashtable->table[i] != NULL) {
-		if (_hashtable->table[i] == node_to_delete)
-			break; /* compare by pointers */
-		else
-			i = (i + 1) % _hashtable->size;
-	}
-
-	if (_hashtable->table[i] == NULL) 
-		return;
-
-	_hashtable->table[i] = NULL;
-
-	for (j = (i + 1) % _hashtable->size; _hashtable->table[j] != NULL; 
-	j = (j + 1) % _hashtable->size) {
+	int i = hash_string(node_to_delete->reservation->reservation_id, _hashtable->size);
 	
-		tmp_node = _hashtable->table[j];
-		_hashtable->table[j] = NULL;
+	if (node_to_delete->previous_hash)
+		node_to_delete->previous_hash->next_hash = node_to_delete->next_hash;
+	else
+		_hashtable->table[i] = node_to_delete->next_hash;
 	
-		insert_in_table(_hashtable, tmp_node);
-	}
+	if (node_to_delete->next_hash)
+		node_to_delete->next_hash->previous_hash = node_to_delete->previous_hash;
 }
 
 void* search_table(hashtable* _hashtable, char reservation_id[]){
 	int i = hash_string(reservation_id, _hashtable->size);
 	
-	while (_hashtable->table[i] != NULL){
-
-		if (!strcmp(_hashtable->table[i]->reservation->reservation_id, reservation_id)){
-			return _hashtable->table[i];
-		}
-		else{
-			i = (i + 1) % _hashtable->size;
-		}
+	node* current_node = _hashtable->table[i];
+	
+	while (current_node){
+		if (!strcmp(current_node->reservation->reservation_id, reservation_id))
+			return current_node;
+		
+		current_node = current_node->next_hash;
 	}
 	
 	return NULL;
