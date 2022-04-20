@@ -35,12 +35,12 @@ int is_valid_duration(time *duration);
 
 int is_valid_capacity(int capacity);
 
-void insert_flight(database *db, flight *new_flight, int origin_airport_index);
+void insert_flight(database *db, node *flight_node, int origin_airport_index);
 
 void print_flight(flight *flight);
 
 int filter_sort_flights(flight flights[], int n_flights, char airport_id[], flight sorted_flights[], int type);
-void print_sorted_flights(flight sorted_flights[], int n_print_flights, int type);
+void print_sorted_flights(database* db, int n_flights, char airport_id[], int type);
 
 /* 
 2nd projeto
@@ -52,7 +52,7 @@ void handle_add_list_reservation_command(database *db);
 void handle_delete_flights_reservations_command(database *db);
 
 int is_valid_reservation_id(char id[]);
-int found_flight_id(database *db, char id[MAX_FLIGHT_ID_SIZE+1], date flight_date);
+node* found_flight_id(database *db, char id[MAX_FLIGHT_ID_SIZE+1], date flight_date);
 
 /* LINKED LISTS */
 list* init_list(database *db);
@@ -66,12 +66,12 @@ hashtable* init_hashtable(database *db, int size);
 
 int hash_string(char* v, int size);
 
-hashtable* insert_in_table(hashtable* table, node* new_node);
+void insert_in_table(hashtable* _hashtable, node* node_to_insert, char key[]);
 
-void remove_from_table(hashtable* table, node* node_to_remove);
+void remove_from_table(hashtable* _hashtable, node* node_to_remove, char key[]);
 
-void delete_table(hashtable* table);
-void* search_table(hashtable* table, char* id);
+void delete_table(hashtable* hashtable_to_delete);
+void* search_table(hashtable* table, char key[]);
 
 void free_all(database *db);
 

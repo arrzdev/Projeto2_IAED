@@ -30,11 +30,11 @@ typedef struct {
 } reservation;
 
 typedef struct Node{
-  struct Node *next;
-  struct Node *previous;
-  struct Node *next_hash;
-  struct Node *previous_hash;
-  reservation *reservation;
+  struct Node *list_next;
+  struct Node *list_previous;
+  struct Node *hash_next;
+  struct Node *hash_previous;
+  void *data;
 } node;
 
 typedef struct{
@@ -51,8 +51,8 @@ typedef struct Flight{
   time duration;
   int capacity;
   int left_capacity;
-  list *reservations;
   int n_reservations;
+  list *reservations;
 } flight;
 
 /* hash table */
@@ -68,7 +68,7 @@ typedef struct{
   int n_airports;
   int n_flights;
   airport airports[MAX_AIRPORTS];
-  flight flights[MAX_FLIGHTS];
+  list *flights;
   date date;
   hashtable *reservations_hashtable;
   hashtable *flights_hashtable;
