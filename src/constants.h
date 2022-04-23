@@ -8,4 +8,6 @@
 #define MAX_FLIGHTS 30000
 #define MAX_FLIGHT_ID_SIZE 6
 
+#define MAX_INPUT 65536
+
 #endif

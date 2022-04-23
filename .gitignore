@@ -1,2 +1,6 @@
 *.result
 projetos dos friends
+.vscode/tasks.json
+ana/*
+extensive_tests/super_mega_bulk.in
+extensive_tests/super_mega_bulk.out

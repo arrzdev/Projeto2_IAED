@@ -12,10 +12,7 @@
 Andre Santos
 ist1103597
 */
-/**
- * @brief Main function
- * @return 0
- */
+
 int main(){
 	database db = {0};
 	
@@ -40,11 +37,6 @@ int main(){
 	return 0;
 }
 
-/**
- * \brief Function that handles the input commands 
- * \param *db system database pointer
- * \return 0 if 'q' command, 1 otherwise
- */
 int handle_command(database *db){
 	char c = getchar();	
 	switch (c){
@@ -73,7 +65,7 @@ int handle_command(database *db){
 			return 1;
 
 		case 't':
-			handle_date_forward(db);
+			handle_date_forward_command(db);
 			return 1;
 		
 		case 'r':
@@ -89,11 +81,6 @@ int handle_command(database *db){
 	}
 }
 
-/**
- * \brief Function that handles add airport command (a)
- * \param *db system database pointer
- * \return void
- */
 void handle_add_airport_command(database *db){
 	int n_airports = db->n_airports;
 	
@@ -121,17 +108,12 @@ void handle_add_airport_command(database *db){
 	}
 	
 	/* success */
-	insert_airport_ordenated(db, &new_airport);
+	insert_airport_sorted(db, &new_airport);
 	printf(ADDED_AIRPORT, new_airport.id);
 	
 	return;
 }
 
-/**
- * \brief Function that handles list airports command (l)
- * \param *db system database pointer
- * \return void
- */
 void handle_list_airports_command(database *db){
 	int i, airport_index;
 	int n_airports = db->n_airports;
@@ -158,11 +140,6 @@ void handle_list_airports_command(database *db){
 	}
 }
 
-/**
- * \brief Function that handles both add and list command (v)
- * \param *db system database pointer
- * \return void
- */
 void handle_add_list_fligth_command(database *db){
 	/* no arguments */
 	if (getchar() == '\n'){
@@ -194,7 +171,7 @@ void handle_add_list_fligth_command(database *db){
 		}
 
 		/* flight already exists */
-		if (!is_new_flight(db, new_flight)){
+		if (found_flight_id(db, new_flight->id, new_flight->date)){
 			printf(FLIGHT_ALREADY_EXISTS);
 			free(new_flight);
 			return;
@@ -261,13 +238,6 @@ void handle_add_list_fligth_command(database *db){
 	}
 } 
 
-
-/**
- * \brief Function that handles list of both origin and destination flights (c, p)
- * \param *db system database pointer
- * \param type 0 to display origin airports, 1 to display destination airports.
- * \return void
- */
 void handle_list_origin_destination_command(database *db, int type){
 	int n_flights = db->n_flights;
 	char airport_id[MAX_AIRPORT_ID_SIZE+1];
@@ -283,49 +253,39 @@ void handle_list_origin_destination_command(database *db, int type){
 	print_sorted_flights(db, n_flights, airport_id, type);
 }
 
-/**
- * \brief Function that handles date forward command (t)
- * \param *db system database pointer
- * \return void
- */
-void handle_date_forward(database *db){
-	date NewDate;
+void handle_date_forward_command(database *db){
+	date new_date;
 	
-	scanf("%02d-%02d-%d", &NewDate.day, &NewDate.month, &NewDate.year);
+	scanf("%02d-%02d-%d", &new_date.day, &new_date.month, &new_date.year);
 	
 	/* invalid date */
-	if (!is_valid_date(&db->date, &NewDate)){
+	if (!is_valid_date(&db->date, &new_date)){
 		printf(INVALID_DATE);
 		return;
 	}
-	
-	db->date = NewDate;
-	printf(PRINT_DATE, NewDate.day, NewDate.month, NewDate.year);
-}
 
+	db->date = new_date;
+	printf(PRINT_DATE, new_date.day, new_date.month, new_date.year);
+}
 
 void handle_add_list_reservation_command(database *db){
 	/* create new reservation */
 	char flight_id[MAX_FLIGHT_ID_SIZE+1];
-	date date;
+	date reservation_date;
 	
-	scanf("%s %02d-%02d-%d", flight_id, &date.day, &date.month, &date.year);
+	scanf("%s %02d-%02d-%d", flight_id, &reservation_date.day, 
+	&reservation_date.month, &reservation_date.year);
 
 	/* if we have a reservation id*/
 	if (getchar() != '\n'){
-		char reservation_buffer[65500];
-		int n_passengers;
+		char reservation_buffer[MAX_INPUT];
+		int reservation_passengers;
 
-		node* flight_node;
-		flight* flight_data;
-
-		reservation* new_reservation;
-		
-		node* new_node;
-		char * reservation_id;
+		node* reservation_flight_node;
+		flight* reservation_flight;
 		
 		/* read the other 2 arguments */
-		scanf("%s %d", reservation_buffer, &n_passengers);
+		scanf("%s %d", reservation_buffer, &reservation_passengers);
 		
 		/* valid reservation id */
 		if (!is_valid_reservation_id(reservation_buffer)){
@@ -334,9 +294,9 @@ void handle_add_list_reservation_command(database *db){
 		}
 	
 		/* flight exists */
-		flight_node = found_flight_id(db, flight_id, date);
+		reservation_flight_node = found_flight_id(db, flight_id, reservation_date);
 
-		if (!flight_node){
+		if (!reservation_flight_node){
 			printf(FLIGHT_DOESNT_EXIST, flight_id);
 			return;
 		}
@@ -347,140 +307,59 @@ void handle_add_list_reservation_command(database *db){
 			return;
 		}
 		
-		flight_data = (flight*) flight_node->data;
+		reservation_flight = (flight*) reservation_flight_node->data;
 		
 		/* valid passengers amount */
-		if (n_passengers > flight_data->left_capacity){
+		if (reservation_passengers > reservation_flight->left_capacity){
 			printf(TOO_MANY_RESERVATIONS);
 			return;
 		}
 		
 		/* valid date */
-		if (!is_valid_date(&db->date, &date)){
+		if (!is_valid_date(&db->date, &reservation_date)){
 			printf(INVALID_DATE);	
 			return;
 		}
 		
-		if (n_passengers <= 0){
+		if (reservation_passengers <= 0){
 			printf(INVALID_PASSENGER_NUMBER);
 			return;
 		}
 		
 		/* allocate reservation_id */
-		reservation_id = (char *) controlled_malloc(db, strlen(reservation_buffer) + 1);
-		strcpy(reservation_id, reservation_buffer);
-		
-		new_reservation = (reservation*) controlled_malloc(db, sizeof(reservation));
-
-		/* insert the data into the reservation structure */
-		new_reservation->date = date;
-		new_reservation->reservation_flight = flight_data;
-		new_reservation->n_passengers = n_passengers;
-		new_reservation->reservation_id = reservation_id;
-		
-		/* create new node */
-		new_node = (node *) controlled_malloc(db, sizeof(node));
-		
-		/* insert data into node */
-		new_node->data = new_reservation;
-		new_node->list_next = NULL;
-		new_node->list_previous = NULL;
-		new_node->hash_next = NULL;
-		new_node->hash_previous = NULL;
-		
-		insert_node(flight_data->reservations, new_node);
-
-		/* insert in hashtable */
-		insert_in_table(db->reservations_hashtable, new_node, reservation_id);
-		
-		/* reserve passengers */
-		flight_data->left_capacity -= n_passengers;
-		flight_data->n_reservations++;
+		make_reservation(db, reservation_buffer, reservation_date, reservation_flight, reservation_passengers);
 	}
 	/* print */
 	else{
-		node* current_node;
-		int i, j, sorted;
-		
-		node* flight_node;
-		flight* flight_data;
-
-		node** sorted_flights;
+		node* reservation_flight_node;
+		flight* reservation_flight;
 
 		/* flight exists */
-		flight_node = found_flight_id(db, flight_id, date);
-		if (!flight_node){
+		reservation_flight_node = found_flight_id(db, flight_id, reservation_date);
+		if (!reservation_flight_node){
 			printf(FLIGHT_DOESNT_EXIST, flight_id);
 			return;
 		}
 	
 		/* valid date */
-		if (!is_valid_date(&db->date, &date)){
+		if (!is_valid_date(&db->date, &reservation_date)){
 			printf(INVALID_DATE);	
 			return;
 		}
 		
-		flight_data = (flight*) flight_node->data;
+		reservation_flight = (flight*) reservation_flight_node->data;
 
-		/* sort */
-		sorted_flights = (node**) controlled_malloc(db, sizeof(node) * flight_data->n_reservations);
-
-		/* copy data */
-		i = 0;
-		for (current_node = flight_data->reservations->head; current_node; current_node = current_node->list_next){
-			sorted_flights[i] = current_node;
-			i++;
-		}
-
-		/* bubble sort sorted_flights */
-		for (i = 0; i < flight_data->n_reservations; i++){
-			sorted = 1;
-			for (j = 0; j < flight_data->n_reservations - i - 1; j++){
-				reservation* current_reservation_data = (reservation*) sorted_flights[j]->data;
-				reservation* next_reservation_data = (reservation*) sorted_flights[j+1]->data;
-
-				if (strcmp(current_reservation_data->reservation_id, next_reservation_data->reservation_id) > 0){
-					node* temp = sorted_flights[j];
-					sorted_flights[j] = sorted_flights[j+1];
-					sorted_flights[j+1] = temp;
-					
-					sorted = 0;
-				}
-			}
-			
-			if (sorted)
-				break;		
-		}
-
-		/* print */
-		for (i=0; i<flight_data->n_reservations; i++){
-			reservation* current_reservation_data = (reservation*) sorted_flights[i]->data;
-
-			printf(PRINT_RESERVATION, current_reservation_data->reservation_id, 
-			current_reservation_data->n_passengers);
-		}
-
-		free(sorted_flights);
+		print_reservations(db, reservation_flight);
 	}
 }
 
-/**
- * @brief   
- * 
- */
 void handle_delete_flights_reservations_command(database *db){
 	char code[65500];
 	scanf("%s", code);
 	
-	/* flight code */
+	/* delete flight and his reservations */
 	if (strlen(code) < 10){
-		node* reservation_node; 
-		node* next_reservation_node;
-		reservation* reservation_data;
-
 		node* flight_node;
-		node* next_flight_node;
-		flight* flight_data;
 
 		/* flight exists */
 		flight_node = search_table(db->flights_hashtable, code);
@@ -489,89 +368,26 @@ void handle_delete_flights_reservations_command(database *db){
 			return;
 		}
 
-		/* iterate trought the flights*/
-		while (flight_node){
-			flight_data = (flight*) flight_node->data;
-			next_flight_node = flight_node->hash_next;
-
-			db->n_flights--;
-
-			/* we need to delete every reservation linked to this flight*/
-			reservation_node = flight_data->reservations->head;
-			
-			/* delete and free nodes */
-			while (reservation_node){
-				next_reservation_node = reservation_node->list_next;
-				
-				reservation_data = (reservation*) reservation_node->data;
-
-				/* delete reservation from hashtable */
-				remove_from_table(db->reservations_hashtable, reservation_node, reservation_data->reservation_id);
-
-				/* free reservation code */
-				free(reservation_data->reservation_id);
-				free_node(reservation_node);
-
-				reservation_node = next_reservation_node;
-			}
-		
-			/* free the memory allocated for the flight linked list */
-			free(flight_data->reservations);
-			
-			/* delete reservation from hashtable */
-			remove_from_table(db->flights_hashtable, flight_node, code);
-
-			/* delete / free flight node */
-			delete_node(db->flights, flight_node);
-
-			flight_node = next_flight_node;
-		}
+		delete_flight(db, code, flight_node);
 	}
-	
 	else {
 		node* reservation_node;
-		reservation * reservation_data;
-		
-		/* reservation code */
+
 		reservation_node = search_table(db->reservations_hashtable, code);
-		
 		if (!reservation_node){
 			printf(NOT_FOUND);
 			return;
 		}
 
-		reservation_data = (reservation *) reservation_node->data;
-
-		/* increment flight capacity left */
-		reservation_data->reservation_flight->left_capacity += reservation_data->n_passengers ;
-
-		/* decrement n_reservations */
-		reservation_data->reservation_flight->n_reservations--;
-		
-		remove_from_table(db->reservations_hashtable, reservation_node, code);
-		
-		free(reservation_data->reservation_id);
-
-		delete_node(reservation_data->reservation_flight->reservations, reservation_node);
+		delete_reservation(db, code, reservation_node);
 	}
 }
 
-/**
- * \brief Function that receives an intenger between 1 and 12 and return the 
- correspondent month days
- * \param month month index
- * \return amount of days corresponding to the given month
- */
 int get_month_days(int month){
 	int year_days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 	return year_days[month-1];
 }
 
-/**
- * \brief Function that convert a date (structure) to days (int)
- * \param date date to be converted
- * \return days corresponding to the given date
- */
 int date_to_days(date *date){
 	int i, days;
 	
@@ -586,12 +402,6 @@ int date_to_days(date *date){
 	return days;
 }
 
-/**
- * \brief Function that convert date and time (both structures) to days (int)
- * \param date date to be converted
- * \param time time to be converted
- * \return days corresponding to the given date and time
- */
 double date_time_to_days(date *date, time *time){
 	double days;
 	
@@ -603,12 +413,6 @@ double date_time_to_days(date *date, time *time){
 	return days;
 }
 
-/**
- * \brief Function that checks if a date is valid or not
- * \param db_date date of current system database
- * \param new_date date to be checked
- * \return 1 if the date is valid, 0 otherwise
- */
 int is_valid_date(date *db_date, date *date){
 	int db_days = date_to_days(db_date);
 	int new_date_days = date_to_days(date);
@@ -624,11 +428,6 @@ int is_valid_date(date *db_date, date *date){
 	return 1;
 }
 
-/**
- * \brief Function that updates the flight info to the destination info
- * \param flight flight to be updated
- * \return flight with updated destination info
- */
 void update_destination_info(flight *flight){
 	int max_month_days;
 	
@@ -658,11 +457,6 @@ void update_destination_info(flight *flight){
 	}
 }
 
-/**
- * \brief Function that checks if a given airport_id is valid or not
- * \param id id to be checked
- * \return 1 if airport_id is valid, 0 otherwise
- */
 int is_valid_airport_id(char id[]){
 	int i;
 	
@@ -674,12 +468,6 @@ int is_valid_airport_id(char id[]){
 	return 1;
 }
 
-/**
- * \brief Function that checks if a given airport is a new airport or not
- * \param *db system database pointer
- * \param id id to be checked
- * \return 1 if the given airport is new on the database, 0 otherwise
- */
 int is_new_airport(database *db, char id[]){
 	int i;
 	
@@ -691,14 +479,7 @@ int is_new_airport(database *db, char id[]){
 	return 1;
 }
 
-/**
- * \brief Function that receives a new airport and insert it in the right index
- on the database airports
- * \param *db system database pointer
- * \param new_airport airport to be inserted
- * \return void
- */
-void insert_airport_ordenated(database *db, airport *new_airport){
+void insert_airport_sorted(database *db, airport *new_airport){
 	int j;
 
 	/* find the insertion index */
@@ -713,14 +494,6 @@ void insert_airport_ordenated(database *db, airport *new_airport){
 	db->n_airports++;
 }
 
-/**
- * \brief Function that receives an id and search for it in the database aiports,
- returns -1 if the id was not found, the index of that id in the database otherwise
- * \param *db system database pointer
- * \param id id to be searched
- * \return -1 if the airport_id was not found, the index in the database airports
- otherwise
- */
 int found_airport_id(database *db, char id[MAX_AIRPORT_ID_SIZE+1]){
 	int i;
 
@@ -734,21 +507,11 @@ int found_airport_id(database *db, char id[MAX_AIRPORT_ID_SIZE+1]){
 	return -1;
 }
 
-/**
- * \brief Function to print the output of a successfully added airport
- * \param airport airport to be printed
- * \return void
- */
 void print_airport(airport *airport){
 	printf(LIST_AIRPORT, airport->id, airport->city, airport->country, 
 	airport->n_flights);
 }
 
-/**
- * \brief Function that checks if a flight_id is valid or not
- * \param id id to be checked
- * \return 1 if the the given flight_id is valid, 0 otherwise
- */
 int is_valid_flight_id(char id[]){
 	int i;
 	
@@ -764,31 +527,6 @@ int is_valid_flight_id(char id[]){
 	return 1;
 }
 
-/**
- * \brief Function that checks if a given flight is a new flight or not
- * \param *db system database pointer
- * \param new_flight flight to be checked
- * \return 1 if the flight_id is valid, 0 otherwise 
- */
-int is_new_flight(database *db, flight *new_flight){
-	node* current_node;
-	flight* flight_data;
-
-	for (current_node = db->flights->head; current_node; current_node = current_node->list_next){
-		flight_data = (flight*)current_node->data;
-
-		if (!strcmp(flight_data->id, new_flight->id) && flight_data->date.day == new_flight->date.day && flight_data->date.month == new_flight->date.month && flight_data->date.year == new_flight->date.year)
-			return 0;
-	}
-	
-	return 1;
-}
-
-/**
- * \brief Function that checks if a duration is valid or not
- * \param duration duration to be checked
- * \return 1 if duration is valid, 0 otherwise
- */
 int is_valid_duration(time *duration){
 	if (duration->hours > 12 || (duration->hours == 12 && duration->minutes > 0))
 		return 0;
@@ -796,12 +534,6 @@ int is_valid_duration(time *duration){
 	return 1;
 }
 
-/**
- * \brief Function that checks if a capacity is valid or not
- * \param *db system database pointer
- * \param capacity capacity to be checked
- * \return 1 if capacity is valid, 0 otherwise
- */
 int is_valid_capacity(int capacity){
 	if (capacity < 10)
 		return 0;
@@ -809,14 +541,6 @@ int is_valid_capacity(int capacity){
 	return 1;
 }
 
-/**
- * \brief Function to insert a flight in the system database 
- * \param *db system database pointer
- * \param new_flight flight to be inserted
- * \param origin_airport_index index of the system database where the flight 
- should be inserted in
- * \return void
- */
 void insert_flight(database *db, node *flight_node, int origin_airport_index){
 	insert_node(db->flights, flight_node);
 	db->n_flights++;
@@ -824,11 +548,6 @@ void insert_flight(database *db, node *flight_node, int origin_airport_index){
 	db->airports[origin_airport_index].n_flights++;
 }
 
-/**
- * \brief Function to print the output of a successfully added flight
- * \param flight flight to be printed
- * \return void
- */
 void print_flight(flight *flight){
 	printf(LIST_FLIGHT, flight->id, flight->origin_id, 
 	flight->destination_id, flight->date.day, 
@@ -836,21 +555,10 @@ void print_flight(flight *flight){
 	flight->time.hours, flight->time.minutes);
 }
 
-/**
- * \brief Function to both filter and sort the flights that have the requested 
- airport id origin (type = 0) or destination (type = 1)
- * \param flights list of flights to be filtered and sorted 
- * \param n_flights size of the the flights list 
- * \param airport_id requested airport id that need to be in the (destination 
- or origin depending on the type)
- * \param sorted_flights list where the sorted and filtered flights will be stored
- * \param type 0 if we want the flights with the requested airport as origin, 
- 1 if want the destination otherwise
- * \return number of flights found
- */
-void print_sorted_flights(database* db, int n_flights, char airport_id[], int type){
-	int i, j, passed_filter, n_filtered_flights, sorted;
-
+void print_sorted_flights(database* db, int n_flights, char airport_id[], 
+int type){
+	int i, j, passed_filter, n_filtered_flights;
+	
 	flight* sorted_flights;	
 	node* current_node;
 
@@ -861,7 +569,8 @@ void print_sorted_flights(database* db, int n_flights, char airport_id[], int ty
 
 	/* copy and filter data */
 	n_filtered_flights = 0;
-	for (current_node = db->flights->head; current_node; current_node = current_node->list_next){
+	for (current_node = db->flights->head; current_node; 
+	current_node = current_node->list_next){
 		flight_data = *(flight*)current_node->data;
 
 		passed_filter = 0;
@@ -878,33 +587,23 @@ void print_sorted_flights(database* db, int n_flights, char airport_id[], int ty
     }
 		
 		if (passed_filter){
-			sorted_flights[n_filtered_flights] = flight_data;
+			/* find the insertion index */
+			j = n_filtered_flights-1;
+			while (j>=0 && date_time_to_days(&sorted_flights[j].date, 
+			&sorted_flights[j].time) > date_time_to_days(&flight_data.date, 
+			&flight_data.time)){
+				sorted_flights[j+1] = sorted_flights[j];
+				j--;
+			}
+
+			/* insert it */
+			sorted_flights[j+1] = flight_data;
 			n_filtered_flights++;
 		}
 	}
 
-	/* update n_flights */
-	n_flights = n_filtered_flights;
-
-	/* bubble sort sorted_flights */
-	for (i = 0; i < n_flights; i++){
-		sorted = 1;
-		for (j = 0; j < n_flights - i - 1; j++){
-			if (date_time_to_days(&sorted_flights[j].date, &sorted_flights[j].time) > date_time_to_days(&sorted_flights[j+1].date, &sorted_flights[j+1].time)){
-				flight temp = sorted_flights[j];
-				sorted_flights[j] = sorted_flights[j+1];
-				sorted_flights[j+1] = temp;
-				
-				sorted = 0;
-			}
-		}
-		
-		if (sorted)
-			break;		
-	}
-
 	/* print */
-	for (i=0; i<n_flights; i++){;
+	for (i=0; i<n_filtered_flights; i++){;
 		if (type)
 			printf(LIST_FLIGHT_AIRPORT, sorted_flights[i].id, 
 			sorted_flights[i].origin_id, sorted_flights[i].date.day, 
@@ -912,18 +611,13 @@ void print_sorted_flights(database* db, int n_flights, char airport_id[], int ty
 			sorted_flights[i].time.hours, sorted_flights[i].time.minutes);
 		else
 			printf(LIST_FLIGHT_AIRPORT, sorted_flights[i].id, 
-			sorted_flights[i].destination_id, sorted_flights[i].date.day, sorted_flights[i].date.month, sorted_flights[i].date.year, 
+			sorted_flights[i].destination_id, sorted_flights[i].date.day, 
+			sorted_flights[i].date.month, sorted_flights[i].date.year, 
 			sorted_flights[i].time.hours, sorted_flights[i].time.minutes);
 	}
 
 	free(sorted_flights);
 }
-
-
-
-/* ========================================= */
-/*                2 PROJETO                  */
-/* ========================================= */
 
 void* controlled_malloc(database *db, unsigned int size){
 	void* p = malloc(size);
@@ -939,12 +633,6 @@ void* controlled_malloc(database *db, unsigned int size){
 	return NULL;
 }
 
-/**
- * \brief Function that checks if a reservation_id is valid or not
- * \param *db system database pointer
- * \param id id to be checked
- * \return 1 if the the given flight_id is valid, 0 otherwise
- */
 int is_valid_reservation_id(char id[]){
 	int i;
 	
@@ -962,7 +650,8 @@ int is_valid_reservation_id(char id[]){
 	return 1;
 }
 
-node* found_flight_id(database *db, char id[MAX_FLIGHT_ID_SIZE+1], date flight_date){
+node* found_flight_id(database *db, char id[MAX_FLIGHT_ID_SIZE+1], 
+date flight_date){
 	node* flight_node = search_table(db->flights_hashtable, id);
 
 	for (; flight_node; flight_node = flight_node->hash_next){
@@ -975,6 +664,78 @@ node* found_flight_id(database *db, char id[MAX_FLIGHT_ID_SIZE+1], date flight_d
 	return NULL;
 }
 
+void delete_reservation(database *db, char code[], node* reservation_node){
+	reservation * reservation_data;
+
+	reservation_data = (reservation *) reservation_node->data;
+
+	/* increment flight capacity left */
+	reservation_data->reservation_flight->left_capacity += 
+	reservation_data->n_passengers ;
+
+	/* decrement n_reservations */
+	reservation_data->reservation_flight->n_reservations--;
+	
+	remove_from_table(db->reservations_hashtable, reservation_node, code);
+	
+	free(reservation_data->reservation_id);
+
+	delete_node(reservation_data->reservation_flight->reservations, 
+	reservation_node);
+}
+
+void delete_flight(database *db, char code[], node* found_flight_node){
+	node *flight_node = found_flight_node;
+	node *next_flight_node;
+	flight flight_data;
+
+	node *reservation_node;
+	node *next_reservation_node;
+	reservation *reservation_data;
+
+
+	/* iterate trought the flights*/
+	while (flight_node){
+		/* :) */
+		flight_data = *(flight*) flight_node->data;
+		next_flight_node = flight_node->hash_next;
+
+		db->n_flights--;
+
+		/* we need to delete every reservation linked to this flight*/
+		reservation_node = flight_data.reservations->head;
+		
+		/* delete and free nodes */
+		while (reservation_node){
+			next_reservation_node = reservation_node->list_next;
+			
+			reservation_data = (reservation*) reservation_node->data;
+
+			/* delete reservation from hashtable */
+			remove_from_table(db->reservations_hashtable, reservation_node, 
+			reservation_data->reservation_id);
+
+			/* free reservation code */
+			free(reservation_data->reservation_id);
+			free_node(reservation_node);
+
+			reservation_node = next_reservation_node;
+		}
+	
+		/* free the memory allocated for the flight linked list */
+		free(flight_data.reservations);
+		
+		/* delete reservation from hashtable */
+		remove_from_table(db->flights_hashtable, flight_node, code);
+
+		/* delete / free flight node */
+		delete_node(db->flights, flight_node);
+
+		flight_node = next_flight_node;
+	}
+}
+
+
 /* LINKED LISTS */
 
 list* init_list(database *db){
@@ -984,7 +745,6 @@ list* init_list(database *db){
 	
 	return new_list;
 }
-
 
 void insert_node(list *linked_list, node *new_node){
 	if (!linked_list->head){
@@ -1008,7 +768,7 @@ void delete_node(list *linked_list, node *node_to_delete){
 		node_to_delete->list_next->list_previous = node_to_delete->list_previous;
 	else
 		linked_list->tail = node_to_delete->list_previous;
-	
+
 	free_node(node_to_delete);
 }
 
@@ -1018,9 +778,11 @@ void free_node(node* node_to_free){
 }
 
 /* HASH TABLE */
+
 hashtable* init_hashtable(database *db, int size){
 	int i;
-	hashtable* new_hashtable = (hashtable*) controlled_malloc(db, sizeof(hashtable));
+	hashtable* new_hashtable = (hashtable*) controlled_malloc(db, 
+	sizeof(hashtable));
 	
 	node** table = (node**) controlled_malloc(db, sizeof(node*) * size);
 	
@@ -1035,14 +797,12 @@ hashtable* init_hashtable(database *db, int size){
 	return new_hashtable;
 }
 
-int hash_string(char* v, int size){
-	long int hash, a = 31415, b = 27183;
+int hash_string(char* string, int size){
+	int hash, a = 31415, b = 27183;
 
-	for (hash = 0; *v != '\0'; v++) {
-		hash = (a * hash + *v) % size;
-		a = a * b % (size - 1);
-	}
-	
+	for (hash = 0; *string != '\0'; string++, a = a*b % (size-1))
+
+	hash = (a*hash + *string) % size;
 	return hash;
 }
 
@@ -1095,11 +855,10 @@ void* search_table(hashtable* _hashtable, char key[]){
 	return NULL;
 }
 
-
-void delete_table(hashtable* hashtable_to_delete){
+void delete_table(hashtable* _hashtable){
 	/* delete hashtable doesnt free nodes */
-	free(hashtable_to_delete->table);
-	free(hashtable_to_delete);
+	free(_hashtable->table);
+	free(_hashtable);
 }
 
 void free_all(database *db){
@@ -1141,3 +900,101 @@ void free_all(database *db){
 	
 	free(db->flights);
 }
+
+void quickSort(node* arr, int low, int high){
+	if (low < high){
+		/* pi is partitioning index, arr[p] is now
+		at right place */
+		int pi = partition(arr, low, high);
+
+		quickSort(arr, low, pi - 1);
+		quickSort(arr, pi + 1, high);
+	}
+}
+
+int partition (node *arr, int low, int high){
+	int j;
+	char *pivot = ((reservation*) arr[high].data)->reservation_id;
+
+	int i = (low - 1);
+
+	for (j = low; j <= high - 1; j++){
+		if (strcmp(((reservation*) arr[j].data)->reservation_id, pivot) < 0){
+			i++; 
+			
+			swap(&arr[i], &arr[j]);
+		}
+	}
+	swap(&arr[i + 1], &arr[high]);
+	return (i + 1);
+}
+
+void swap(node *a, node *b){
+    node t = *a;
+    *a = *b;
+    *b = t;
+}
+
+void make_reservation(database *db, char reservation_buffer[MAX_INPUT], 
+date reservation_date, flight *reservation_flight, int reservation_passengers){
+	char* reservation_id;
+	reservation* new_reservation;
+	node* new_node;
+
+	reservation_id = (char *) controlled_malloc(db, 
+	strlen(reservation_buffer) + 1);
+	strcpy(reservation_id, reservation_buffer);
+	
+	new_reservation = (reservation*) controlled_malloc(db, sizeof(reservation));
+	new_reservation->date = reservation_date;
+	new_reservation->reservation_flight = reservation_flight;
+	new_reservation->n_passengers = reservation_passengers;
+	new_reservation->reservation_id = reservation_id;
+
+	new_node = (node *) controlled_malloc(db, sizeof(node));
+	new_node->data = new_reservation;
+	new_node->list_next = NULL;
+	new_node->list_previous = NULL;
+	new_node->hash_next = NULL;
+	new_node->hash_previous = NULL;
+	
+	insert_node(reservation_flight->reservations, new_node);
+	insert_in_table(db->reservations_hashtable, new_node, reservation_id);
+	
+	reservation_flight->left_capacity -= reservation_passengers;
+	reservation_flight->n_reservations++;
+}
+
+void print_reservations(database *db, flight *reservation_flight){
+	node* sorted_flights;
+	node* reservation_node;
+	int i;
+	
+	/* sort */
+	sorted_flights = (node*) controlled_malloc(db, sizeof(node) * 
+	reservation_flight->n_reservations);
+
+	/* copy data */
+	i = 0;
+	for (reservation_node = reservation_flight->reservations->head; 
+	reservation_node; reservation_node = reservation_node->list_next){
+		sorted_flights[i] = *reservation_node;
+		i++;
+	}
+
+	/* sort flgiths to be printed */
+	quickSort(sorted_flights, 0, reservation_flight->n_reservations - 1);
+
+	/* print */
+	for (i=0; i<reservation_flight->n_reservations; i++){
+		reservation* current_reservation_data = (reservation*) 
+		sorted_flights[i].data;
+
+		printf(PRINT_RESERVATION, current_reservation_data->reservation_id, 
+		current_reservation_data->n_passengers);
+	}
+
+	free(sorted_flights);	
+}
+
+/**/
